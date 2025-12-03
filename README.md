@@ -1,19 +1,23 @@
 # VN-Index Stock Data Crawler
 
-Python crawler để thu thập dữ liệu chứng khoán Việt Nam (OHLC + fundamentals) từ **cafef.vn**.
+Python crawler để thu thập dữ liệu chứng khoán Việt Nam từ **cafef.vn** (OHLC) và **TCBS** (fundamental).
 
 ## Tính năng
 
-- ✅ **Gọi API trực tiếp** - Sử dụng cafef JSON API, nhanh và đáng tin cậy
-- ✅ **Historical data** - Lấy toàn bộ lịch sử giao dịch, lưu CSV
-- ✅ **Realtime polling** - Poll giá realtime theo chu kỳ, append vào CSV
-- ✅ **Fallback** - Nếu API fail, tự động fallback sang HTML scraping + Playwright
+- ✅ **Historical OHLC** - Dữ liệu lịch sử giá (Open, High, Low, Close, Volume) từ cafef API
+- ✅ **Fundamental Data** - Chỉ số tài chính (P/E, P/B, ROE, ROA, EPS...) từ TCBS API
+- ✅ **Financial Statements** - Báo cáo tài chính (income, balance sheet, cash flow)
+- ✅ **Realtime Polling** - Poll giá realtime theo chu kỳ
+- ✅ **Fallback** - Tự động fallback sang HTML scraping + Playwright nếu API fail
 
 ## Cài đặt
 
 ```bash
-# Clone và tạo virtualenv
+# Clone repo
+git clone https://github.com/NgokNgo/crawl-data.git
 cd crawl-data
+
+# Tạo virtualenv
 python -m venv .venv
 source .venv/bin/activate
 
@@ -27,11 +31,11 @@ playwright install chromium
 
 ## Sử dụng
 
-### 1. Crawl dữ liệu lịch sử (Historical)
+### 1. Crawl dữ liệu lịch sử (Historical OHLC)
 
 ```bash
 # Crawl một mã
-python run_crawl.py historical --symbol ACV
+python run_crawl.py historical --symbol VIC
 
 # Crawl nhiều mã từ file
 python run_crawl.py historical --symbols-file symbols.txt
@@ -40,23 +44,40 @@ python run_crawl.py historical --symbols-file symbols.txt
 python run_crawl.py historical --symbol VIC --outdir data/historical
 ```
 
-### 2. Poll dữ liệu realtime
+### 2. Crawl dữ liệu cơ bản (Fundamental)
+
+```bash
+# Crawl fundamental cho một mã (overview, ratios, income, balance, cashflow)
+python run_crawl.py fundamental --symbol VIC
+
+# Crawl nhiều mã từ file
+python run_crawl.py fundamental --symbols-file symbols.txt
+
+# Chỉ xem chỉ số mới nhất (không lưu file)
+python run_crawl.py fundamental --symbol VIC --latest
+```
+
+### 3. Poll dữ liệu realtime
 
 ```bash
 # Poll một mã mỗi 60 giây
-python run_crawl.py realtime --symbol VIC --url-template 'https://cafef.vn/thi-truong-chung-khoan/hose/{symbol}.chn' --interval 60
+python run_crawl.py realtime --symbol VIC \
+  --url-template 'https://cafef.vn/thi-truong-chung-khoan/hose/{symbol}.chn' \
+  --interval 60
 
 # Poll nhiều mã, dừng sau 10 lần
-python run_crawl.py realtime --symbols-file symbols.txt --url-template 'https://cafef.vn/thi-truong-chung-khoan/hose/{symbol}.chn' --interval 30 --iterations 10
+python run_crawl.py realtime --symbols-file symbols.txt \
+  --url-template 'https://cafef.vn/thi-truong-chung-khoan/hose/{symbol}.chn' \
+  --interval 30 --iterations 10
 ```
 
-### 3. Quản lý danh sách mã
+### 4. Quản lý danh sách mã
 
 ```bash
 # Load từ file
 python run_crawl.py symbols --from-file symbols.txt
 
-# Tạo file symbols.txt với các mã phổ biến
+# Tạo file symbols.txt
 echo -e "VIC\nVHM\nVCB\nMSN\nVNM\nHPG\nBID\nACB\nMWG\nVPB" > symbols.txt
 ```
 
@@ -74,13 +95,32 @@ echo -e "VIC\nVHM\nVCB\nMSN\nVNM\nHPG\nBID\nACB\nMWG\nVPB" > symbols.txt
 | adj_close | Giá điều chỉnh |
 | volume | Khối lượng khớp lệnh |
 | value | Giá trị khớp lệnh |
-| deal_volume | KL thỏa thuận |
-| deal_value | GT thỏa thuận |
-| change | Thay đổi (%) |
 
-### Realtime (`data/realtime/{SYMBOL}_realtime.csv`)
+### Fundamental (`data/fundamental/`)
 
-Append mỗi lần poll với timestamp và giá hiện tại.
+| File | Mô tả |
+|------|-------|
+| `{SYMBOL}_overview.csv` | Thông tin công ty (ngành, số nhân viên, % nước ngoài...) |
+| `{SYMBOL}_ratios.csv` | Chỉ số tài chính theo quý (P/E, P/B, ROE, ROA, EPS, margin...) |
+| `{SYMBOL}_income.csv` | Báo cáo kết quả kinh doanh (doanh thu, lợi nhuận...) |
+| `{SYMBOL}_balance.csv` | Bảng cân đối kế toán (tài sản, nợ, vốn...) |
+| `{SYMBOL}_cashflow.csv` | Báo cáo lưu chuyển tiền tệ |
+
+**Các chỉ số trong ratios.csv:**
+
+| Column | Mô tả |
+|--------|-------|
+| priceToEarning | P/E ratio |
+| priceToBook | P/B ratio |
+| roe | Return on Equity |
+| roa | Return on Assets |
+| earningPerShare | EPS (VND) |
+| bookValuePerShare | Book value per share |
+| grossProfitMargin | Biên lợi nhuận gộp |
+| operatingMargin | Biên lợi nhuận hoạt động |
+| netProfitMargin | Biên lợi nhuận ròng |
+| currentPayment | Khả năng thanh toán hiện hành |
+| quickPayment | Khả năng thanh toán nhanh |
 
 ## Cấu trúc project
 
@@ -91,33 +131,49 @@ crawl-data/
 ├── requirements.txt       # Dependencies
 ├── crawler/
 │   ├── __init__.py
-│   ├── cafef_api.py       # Gọi cafef JSON API trực tiếp
+│   ├── cafef_api.py       # Cafef JSON API (OHLC)
 │   ├── cafef_parser.py    # Parse HTML (fallback)
-│   ├── historical.py      # Fetch historical data
+│   ├── fundamental.py     # TCBS API (fundamental data)
+│   ├── historical.py      # Fetch historical OHLC
 │   ├── realtime.py        # Poll realtime data
 │   ├── storage.py         # Lưu CSV
 │   └── symbols.py         # Quản lý symbols
 └── data/
-    ├── historical/        # CSV lịch sử
+    ├── historical/        # CSV lịch sử OHLC
+    ├── fundamental/       # CSV fundamental data
     └── realtime/          # CSV realtime
 ```
 
-## API Endpoint (cafef.vn)
+## API Endpoints
 
-Crawler sử dụng API sau (đã reverse-engineer):
+### Cafef (Historical OHLC)
 
 ```
 GET https://cafef.vn/du-lieu/Ajax/PageNew/DataHistory/PriceHistory.ashx
-    ?Symbol=ACV
-    &StartDate=
-    &EndDate=
-    &PageIndex=1
-    &PageSize=1000
+    ?Symbol=VIC&PageIndex=1&PageSize=1000
 ```
 
-Response: JSON với cấu trúc `{"Data": {"TotalCount": N, "Data": [...]}}`
+### TCBS (Fundamental)
+
+```
+# Overview
+GET https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker/{symbol}/overview
+
+# Financial Ratios
+GET https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/financialratio?yearly=0&isAll=true
+
+# Income Statement
+GET https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=1&isAll=true
+
+# Balance Sheet
+GET https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/balancesheet?yearly=1&isAll=true
+
+# Cash Flow
+GET https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/cashflow?yearly=1&isAll=true
+```
 
 ## Lưu ý
 
-- Sử dụng `--interval` hợp lý (khuyến nghị >= 30 giây)
+- Sử dụng `--interval` hợp lý cho realtime polling (khuyến nghị >= 30 giây)
 - API có thể thay đổi, kiểm tra và cập nhật nếu cần
+- Dữ liệu fundamental từ TCBS cập nhật theo quý

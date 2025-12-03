@@ -190,4 +190,4 @@ def fetch_historical(symbol: str, url_template: Optional[str] = None, out_dir: s
             pass
 
     save_ohlc_csv(symbol, df, out_dir=out_dir)
-    return f"{out_dir}/{symbol}.csv"
+    return f"{out_dir}/{symbol}_ohlc.csv"

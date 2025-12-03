@@ -17,7 +17,7 @@ def save_ohlc_csv(symbol: str, df: pd.DataFrame, out_dir: str = "data/historical
     Returns:
         Path to saved CSV file
     """
-    out = Path(out_dir) / f"{symbol}.csv"
+    out = Path(out_dir) / f"{symbol}_ohlc.csv"
     ensure_dir(out)
     if not df.index.name:
         if "date" in df.columns:
