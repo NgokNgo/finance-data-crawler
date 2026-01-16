@@ -11,7 +11,6 @@ Usage examples are in the project README. This script supports subcommands:
 import argparse
 from crawler import symbols as symbols_mod
 from crawler.historical import fetch_historical
-from crawler.realtime import poll_symbols
 from crawler.fundamental import save_fundamental_csv, get_latest_ratios
 import sys
 
@@ -86,18 +85,6 @@ def cmd_fundamental(args):
         except Exception as e:
             print(f"Error fetching fundamental for {s}: {e}")
 
-
-def cmd_realtime(args):
-    if args.symbols_file:
-        syms = symbols_mod.load_symbols_from_file(args.symbols_file)
-    elif args.symbol:
-        syms = [args.symbol]
-    else:
-        print("Provide --symbol or --symbols-file")
-        sys.exit(1)
-    poll_symbols(syms, args.url_template, interval=args.interval, out_dir=args.outdir, max_iterations=args.iterations)
-
-
 def main():
     p = argparse.ArgumentParser(description="VN-Index stock data crawler (cafef.vn + TCBS)")
     sub = p.add_subparsers(dest="cmd")
@@ -120,15 +107,6 @@ def main():
     fp.add_argument("--outdir", default="data/fundamental", help="Output directory for CSV files")
     fp.add_argument("--latest", action="store_true", help="Only show latest ratios (don't save to CSV)")
     fp.set_defaults(func=cmd_fundamental)
-
-    rp = sub.add_parser("realtime", help="Poll realtime prices")
-    rp.add_argument("--symbol", help="Single symbol to poll")
-    rp.add_argument("--symbols-file", help="File with symbols, one per line")
-    rp.add_argument("--url-template", required=True, help="URL template with {symbol}")
-    rp.add_argument("--interval", type=int, default=60, help="Seconds between polls")
-    rp.add_argument("--outdir", default="data/realtime", help="Output directory for CSV files")
-    rp.add_argument("--iterations", type=int, default=None, help="Stop after N iterations (useful for tests)")
-    rp.set_defaults(func=cmd_realtime)
 
     args = p.parse_args()
     if not args.cmd:
